@@ -280,7 +280,6 @@ signatures/
 └── master_signature_genes_unique.txt    # one gene symbol per line
 
 results/
-└── <compare_tag>/
     └── <dataset>/
         ├── inputs/
         │   └── <run_tag>.npz
