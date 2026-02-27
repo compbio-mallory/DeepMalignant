@@ -350,11 +350,11 @@ def main():
     cs2["tumor_posterior"] = cs2["cluster"].map(lambda c: float(post_map2[int(c)]))
 
     # write outputs
-    out_labels = f"{args.out_prefix}.autocall2.labels.tsv"
-    out_tumor = f"{args.out_prefix}.autocall2.tumor_clusters.txt"
-    out_scores = f"{args.out_prefix}.autocall2.cluster_scores.tsv"
-    out_percell = f"{args.out_prefix}.autocall2.per_cell.tsv"
-    out_meta = f"{args.out_prefix}.autocall2.meta.json"
+    out_labels = f"{args.out_prefix}.labels.tsv"
+    out_tumor = f"{args.out_prefix}.tumor_clusters.txt"
+    out_scores = f"{args.out_prefix}.cluster_scores.tsv"
+    out_percell = f"{args.out_prefix}.per_cell.tsv"
+    out_meta = f"{args.out_prefix}.meta.json"
 
     pd.Series(labels.astype(int)).to_csv(out_labels, sep="\t", header=False, index=False)
 

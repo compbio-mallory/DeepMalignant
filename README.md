@@ -224,11 +224,11 @@ python find_tumor_clusters.py \
 
 | File | Description |
 |---|---|
-| `<prefix>.autocall2.labels.tsv` | Final cluster labels after any refinement (1 column, no header) |
-| `<prefix>.autocall2.tumor_clusters.txt` | Cluster IDs called as tumor (one per line) |
-| `<prefix>.autocall2.cluster_scores.tsv` | Per-cluster: CNA burden score, size, GMM tumor posterior |
-| `<prefix>.autocall2.per_cell.tsv` | Per-cell: cell name, final cluster ID, CNA burden |
-| `<prefix>.autocall2.meta.json` | Full run metadata: GMM parameters, refinement targets, all arguments |
+| `<prefix>.labels.tsv` | Final cluster labels after any refinement (1 column, no header) |
+| `<prefix>.tumor_clusters.txt` | Cluster IDs called as tumor (one per line) |
+| `<prefix>.cluster_scores.tsv` | Per-cluster: CNA burden score, size, GMM tumor posterior |
+| `<prefix>.per_cell.tsv` | Per-cell: cell name, final cluster ID, CNA burden |
+| `<prefix>.meta.json` | Full run metadata: GMM parameters, refinement targets, all arguments |
 
 ---
 
@@ -240,8 +240,8 @@ Compares predicted tumor/normal assignments to ground-truth cell type labels. Th
 python evaluate.py \
   --cells_csv           <path/to/Cells.csv> \
   --names_txt           <prefix>.cells.txt \
-  --labels_tsv          <prefix>.autocall2.labels.tsv \
-  --tumor_clusters_txt  <prefix>.autocall2.tumor_clusters.txt \
+  --labels_tsv          <prefix>.labels.tsv \
+  --tumor_clusters_txt  <prefix>.tumor_clusters.txt \
   --out_prefix          <path/to/output_prefix>
 ```
 
@@ -289,11 +289,11 @@ results/
                 ├── <run_tag>.cells.txt
                 ├── <run_tag>.labels.tsv
                 ├── <run_tag>.latent.tsv
-                ├── <run_tag>.autocall2.labels.tsv
-                ├── <run_tag>.autocall2.tumor_clusters.txt
-                ├── <run_tag>.autocall2.cluster_scores.tsv
-                ├── <run_tag>.autocall2.per_cell.tsv
-                └── <run_tag>.autocall2.meta.json
+                ├── <run_tag>.labels.tsv
+                ├── <run_tag>.tumor_clusters.txt
+                ├── <run_tag>.cluster_scores.tsv
+                ├── <run_tag>.per_cell.tsv
+                └── <run_tag>.meta.json
 ```
 
 **`Cells.csv` required columns:** `cell_name`, and a cell type column (default `cell_type` with value `malignant` for tumor cells).
