@@ -97,13 +97,13 @@ python build_graph_inputs.py \
 | `--cna_csv` | str | required | Filtered CNA matrix (output of `filter_cna.py`) |
 | `--cells_csv` | str | required | Cell metadata CSV; must contain a `cell_name` column |
 | `--genes_txt` | str | required | Gene list corresponding to the MTX gene axis (one per line) |
-| `--mtx` | str | required | UMI count matrix in Matrix Market format; accepted as either `(genes × cells)` or `(cells × genes)` |
+| `--mtx` | str | required | UMI count matrix  |
 | `--sig_genes_txt` | str | required | Signature gene symbols to use as node features (one per line) |
 | `--k` | int | `20` | Number of nearest neighbours for the CNA-based kNN graph |
 | `--power` | float | `4.0` | Exponent applied to cosine similarity weights; higher values produce sparser, sharper edge weights |
 | `--symmetrize` / `--no_symmetrize` | flag | `True` | Whether to symmetrise the directed kNN graph |
 | `--coalesce` | str | `max` | How to merge forward/reverse edge weights when symmetrising: `max` or `mean` |
-| `--seed` | int | `0` | Random seed for kNN |
+| `--seed` | int | `42` | Random seed for kNN |
 | `--allow_missing_cna` | flag | off | If cells in `Cells.csv` are absent from the CNA matrix, restrict to the intersection instead of raising an error |
 | `--out` | str | required | Output `.npz` path |
 
