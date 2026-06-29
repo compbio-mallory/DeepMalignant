@@ -1,4 +1,6 @@
 
+<img width="2667" height="2257" alt="framework" src="https://github.com/user-attachments/assets/2691583e-e9fe-4022-89ef-18d7989d564a" />
+
 ## Model Architecture
 
 The model (`models.py`) is a **Graph Attention Autoencoder (GAT-AE)** built in TensorFlow/Keras.
