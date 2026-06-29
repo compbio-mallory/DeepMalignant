@@ -1,39 +1,33 @@
+# DeepMalignant
 
-<img width="2667" height="2257" alt="framework" src="https://github.com/user-attachments/assets/2691583e-e9fe-4022-89ef-18d7989d564a" />
+**Multi-modality Graph Representation Learning for Malignant Cell Identification from scRNA-seq using DeepMalignant**
 
-## Model Architecture
-
-The model (`models.py`) is a **Graph Attention Autoencoder (GAT-AE)** built in TensorFlow/Keras.
-
-**Encoder**
-- `GATConv(in_dim → hidden1, attention=True, activation=ELU)` — learns per-edge attention weights from source and destination node projections
-- `GATConv(hidden1 → hidden2, attention=False, activation=None)` — produces the latent embedding
-
-**Decoder** (tied weights — decoder kernels are the transpose of encoder kernels)
-- `GATConv(hidden2 → hidden1, attention=True, tied_attention=encoder_layer1.attentions, activation=ELU)`
-- `GATConv(hidden1 → in_dim, attention=False, activation=None)` — reconstruction
-
-The `GATConv` layer (`gat_conv.py`) computes attention scores as a sum of per-node source and destination projections, masks them with the sparse adjacency matrix, applies LeakyReLU (negative slope=0.2), then softmax-normalises per node before aggregating neighbour features.
-
-**Training objective** combines:
-- Reconstruction loss (MSE between input RNA features and decoded output)
-- Supervised contrastive loss on the latent space (InfoNCE-style with random negative sampling)
+> 📄 Preprint: **
 
 ---
 
-## Repository Structure
+## Table of Contents
 
-```
-DeepMalig-CNAx/
-├── filter_cna.py           # Step 0: Filter CNA bins by variance
-├── build_graph_inputs.py   # Step 1: Build graph inputs (.npz)
-├── train.py                # Step 2: Train GAT-AE, produce latent + cluster labels
-├── find_tumor_clusters.py  # Step 3: Unsupervised tumor cluster calling
-├── evaluate.py             # Step 4: Evaluate against ground-truth labels
-├── gat_conv.py             # Graph Attention Convolution layer (TensorFlow/Keras)
-├── models.py               # GAT Autoencoder model definition
-└── utils.py                # Graph normalization and kNN graph utilities
-```
+1. [Framework Overview](#framework-overview)
+2. [Installation](#installation)
+3. [Usage](#usage)
+   - [Step 0 — Filter CNA Bins](#step-0--filter-cna-bins)
+   - [Step 1 — Build Graph Inputs](#step-1--build-graph-inputs)
+   - [Step 2 — Train](#step-2--train)
+   - [Step 3 — Find Tumor Clusters](#step-3--find-tumor-clusters)
+   - [Step 4 — Evaluate](#step-4--evaluate)
+4. [Model Architecture](#model-architecture)
+5. [Repository Structure](#repository-structure)
+6. [Data Layout](#data-layout)
+7. [Dependencies](#dependencies)
+
+---
+
+## Framework Overview
+
+<img width="2667" height="2257" alt="framework" src="https://github.com/user-attachments/assets/2691583e-e9fe-4022-89ef-18d7989d564a" />
+
+**Fig. 1.** Overview of the DeepMalignant framework for malignant cell identification from scRNA-seq data using multi-modality graph representation learning.
 
 ---
 
@@ -51,14 +45,18 @@ pip install tensorflow scikit-learn pandas numpy scipy leidenalg igraph scanpy a
 
 ## Usage
 
-### Step 0 — Filter CNA bins
+A complete end-to-end run consists of four sequential steps. The commands below use the provided test dataset (see [Data Layout](#data-layout) for details on the test data files).
+
+---
+
+### Step 0 — Filter CNA Bins
 
 Removes genomic bins whose variance across cells falls below a threshold. Low-variance bins carry little signal and add noise to the downstream kNN graph.
 
 ```bash
 python filter_cna.py \
-  --cna_csv   <path/to/CNA_matrix_raw.csv> \
-  --out_csv   <path/to/CNA_matrix_filtered.csv> \
+  --cna_csv   test_data/CNA.csv \
+  --out_csv   results/CNA_filtered.csv \
   --min_var   0.02
 ```
 
@@ -69,11 +67,11 @@ python filter_cna.py \
 | `--min_var` | float | `0.05` | Keep bins with variance ≥ this value |
 | `--dtype` | str | `float32` | Numeric dtype for loading the matrix (`float32` or `float64`) |
 
-The script prints bin variance quantiles at `[0, 10, 25, 50, 75, 90, 95, 99, 100]` percentiles for sanity-checking the threshold. 
+The script prints bin variance quantiles at `[0, 10, 25, 50, 75, 90, 95, 99, 100]` percentiles for sanity-checking the threshold.
 
 ---
 
-### Step 1 — Build graph inputs
+### Step 1 — Build Graph Inputs
 
 Builds the `.npz` bundle consumed by `train.py`. Two things happen:
 
@@ -83,30 +81,30 @@ Builds the `.npz` bundle consumed by `train.py`. Two things happen:
 
 ```bash
 python build_graph_inputs.py \
-  --cna_csv       <path/to/CNA_matrix_filtered.csv> \
-  --cells_csv     <path/to/Cells.csv> \
-  --genes_txt     <path/to/Genes.txt> \
-  --mtx           <path/to/Exp_data_UMIcounts.mtx> \
-  --sig_genes_txt <path/to/signature_genes.txt> \
+  --cna_csv       results/CNA_filtered.csv \
+  --genes_txt     test_data/Genes.txt \
+  --mtx           test_data/GeneExpression.mtx \
+  --sig_genes_txt test_data/GeneSignatures.txt \
   --k             20 \
   --power         4.0 \
   --allow_missing_cna \
-  --out           <path/to/output.npz>
+  --out           results/inputs.npz
 ```
+
+> **Test data note:** `test_data/GeneExpression.mtx` contains UMI counts for the DCIS1 sample (Gao et al., 2021, retrieved via the Weizmann Institute's Curated Cancer Cell Atlas, 3CA). `test_data/GeneSignatures.txt` contains the curated signature gene list used in this study. `test_data/CNA.csv` provides the copy number alteration matrix for the same sample.
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
 | `--cna_csv` | str | required | Filtered CNA matrix (output of `filter_cna.py`) |
-| `--cells_csv` | str | required | Cell metadata CSV; must contain a `cell_name` column |
 | `--genes_txt` | str | required | Gene list corresponding to the MTX gene axis (one per line) |
-| `--mtx` | str | required | UMI count matrix  |
+| `--mtx` | str | required | UMI count matrix |
 | `--sig_genes_txt` | str | required | Signature gene symbols to use as node features (one per line) |
 | `--k` | int | `20` | Number of nearest neighbours for the CNA-based kNN graph |
 | `--power` | float | `4.0` | Exponent applied to cosine similarity weights; higher values produce sparser, sharper edge weights |
 | `--symmetrize` / `--no_symmetrize` | flag | `True` | Whether to symmetrise the directed kNN graph |
 | `--coalesce` | str | `max` | How to merge forward/reverse edge weights when symmetrising: `max` or `mean` |
 | `--seed` | int | `42` | Random seed for kNN |
-| `--allow_missing_cna` | flag | off | If cells in `Cells.csv` are absent from the CNA matrix, restrict to the intersection instead of raising an error |
+| `--allow_missing_cna` | flag | off | If cells in the expression matrix are absent from the CNA matrix, restrict to the intersection instead of raising an error |
 | `--out` | str | required | Output `.npz` path |
 
 **Output NPZ arrays:**
@@ -123,11 +121,11 @@ python build_graph_inputs.py \
 
 ### Step 2 — Train
 
-Trains the GAT Autoencoder on the graph and clusters cells in the learned latent space.
+Trains the DeepMalignant GAT Autoencoder on the graph and clusters cells in the learned latent space.
 
 ```bash
 python train.py \
-  --npz             <path/to/inputs.npz> \
+  --npz             results/inputs.npz \
   --hidden1         64 \
   --hidden2         16 \
   --epochs          1000 \
@@ -139,7 +137,7 @@ python train.py \
   --temperature     0.1 \
   --n_neg           256 \
   --zscore_features \
-  --out_prefix      <path/to/output_prefix>
+  --out_prefix      results/run/deepmalig
 ```
 
 | Argument | Type | Default | Description |
@@ -168,7 +166,7 @@ python train.py \
 
 ---
 
-### Step 3 — Find tumor clusters
+### Step 3 — Find Tumor Clusters
 
 Scores each cluster by its median per-cell CNA burden (mean absolute deviation from the per-genomic-bin population median), then fits a **2-component 1D Gaussian Mixture Model** to separate high-burden (tumor) from low-burden (normal) clusters. Clusters whose posterior probability of belonging to the high-burden component exceeds `--tumor_posterior_thr` are called as tumor.
 
@@ -176,11 +174,11 @@ An optional **auto-refinement** pass splits ambiguous or large normal clusters i
 
 ```bash
 python find_tumor_clusters.py \
-  --cna_csv                 <path/to/CNA_matrix_filtered.csv> \
-  --names_txt               <prefix>.cells.txt \
-  --labels_tsv              <prefix>.labels.tsv \
-  --latent_tsv              <prefix>.latent.tsv \
-  --out_prefix              <path/to/output_prefix> \
+  --cna_csv                 results/CNA_filtered.csv \
+  --names_txt               results/run/deepmalig.cells.txt \
+  --labels_tsv              results/run/deepmalig.labels.tsv \
+  --latent_tsv              results/run/deepmalig.latent.tsv \
+  --out_prefix              results/run/deepmalig \
   --allow_missing_cna \
   --center_mode             per_segment_median \
   --cna_burden_mode         mean_abs \
@@ -240,21 +238,23 @@ Compares predicted tumor/normal assignments to ground-truth cell type labels. Th
 
 ```bash
 python evaluate.py \
-  --cells_csv           <path/to/Cells.csv> \
-  --names_txt           <prefix>.cells.txt \
-  --labels_tsv          <prefix>.labels.tsv \
-  --tumor_clusters_txt  <prefix>.tumor_clusters.txt \
-  --out_prefix          <path/to/output_prefix>
+  --names_txt           results/run/deepmalig.cells.txt \
+  --labels_tsv          results/run/deepmalig.labels.tsv \
+  --tumor_clusters_txt  results/run/deepmalig.tumor_clusters.txt \
+  --ground_labels_csv   test_data/GroundLabels.csv \
+  --out_prefix          results/run/deepmalig
 ```
+
+> **Test data note:** `test_data/GroundLabels.csv` provides per-cell ground-truth malignant/normal annotations for the DCIS1 sample (Gao et al., 2021, 3CA), used here solely for evaluation.
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `--cells_csv` | str | required | Cell metadata CSV with ground-truth labels |
 | `--names_txt` | str | required | Ordered cell names from training |
 | `--labels_tsv` | str | required | Cluster labels (output of `find_tumor_clusters.py`) |
 | `--tumor_clusters_txt` | str | required | Tumor cluster list (output of `find_tumor_clusters.py`) |
+| `--ground_labels_csv` | str | required | CSV with ground-truth per-cell labels |
 | `--out_prefix` | str | required | Prefix for evaluation outputs |
-| `--cell_type_col` | str | `cell_type` | Column in `Cells.csv` containing cell type labels |
+| `--cell_type_col` | str | `cell_type` | Column in the ground-truth CSV containing cell type labels |
 | `--malignant_key` | str | `malignant` | Value in `cell_type_col` that denotes tumor cells (case-insensitive) |
 
 **Output files:**
@@ -266,7 +266,50 @@ python evaluate.py \
 
 ---
 
+## Model Architecture
+
+The DeepMalignant model (`models.py`) is a **Graph Attention Autoencoder (GAT-AE)** built in TensorFlow/Keras.
+
+**Encoder**
+- `GATConv(in_dim → hidden1, attention=True, activation=ELU)` — learns per-edge attention weights from source and destination node projections
+- `GATConv(hidden1 → hidden2, attention=False, activation=None)` — produces the latent embedding
+
+**Decoder** (tied weights — decoder kernels are the transpose of encoder kernels)
+- `GATConv(hidden2 → hidden1, attention=True, tied_attention=encoder_layer1.attentions, activation=ELU)`
+- `GATConv(hidden1 → in_dim, attention=False, activation=None)` — reconstruction
+
+The `GATConv` layer (`gat_conv.py`) computes attention scores as a sum of per-node source and destination projections, masks them with the sparse adjacency matrix, applies LeakyReLU (negative slope=0.2), then softmax-normalises per node before aggregating neighbour features.
+
+**Training objective** combines:
+- Reconstruction loss (MSE between input RNA features and decoded output)
+- Supervised contrastive loss on the latent space (InfoNCE-style with random negative sampling)
+
+---
+
+## Repository Structure
+
+```
+DeepMalignant/
+├── filter_cna.py           # Step 0: Filter CNA bins by variance
+├── build_graph_inputs.py   # Step 1: Build graph inputs (.npz)
+├── train.py                # Step 2: Train GAT-AE, produce latent + cluster labels
+├── find_tumor_clusters.py  # Step 3: Unsupervised tumor cluster calling
+├── evaluate.py             # Step 4: Evaluate against ground-truth labels
+├── gat_conv.py             # Graph Attention Convolution layer (TensorFlow/Keras)
+├── models.py               # GAT Autoencoder model definition
+├── utils.py                # Graph normalization and kNN graph utilities
+└── test_data/
+    ├── CNA.csv             # CNA matrix for DCIS1 (Gao et al., 2021, 3CA)
+    ├── GeneExpression.mtx  # UMI count matrix for DCIS1
+    ├── GeneSignatures.txt  # Curated signature gene list
+    └── GroundLabels.csv    # Ground-truth malignant/normal labels for DCIS1
+```
+
+---
+
 ## Data Layout
+
+The recommended directory layout for running DeepMalignant on your own datasets mirrors the structure below. The `test_data/` folder bundled in this repository contains a ready-to-run example based on the DCIS1 sample from Gao et al. (2021), retrieved via the Weizmann Institute's Curated Cancer Cell Atlas (3CA).
 
 ```
 datasets/
@@ -282,32 +325,47 @@ signatures/
 └── master_signature_genes_unique.txt    # one gene symbol per line
 
 results/
-    └── <dataset>/
-        ├── inputs/
-        │   └── <run_tag>.npz
-        └── runs/
-            └── <run_tag>/
-                ├── <run_tag>.cells.txt
-                ├── <run_tag>.labels.tsv
-                ├── <run_tag>.latent.tsv
-                ├── <run_tag>.labels.tsv
-                ├── <run_tag>.tumor_clusters.txt
-                ├── <run_tag>.cluster_scores.tsv
-                ├── <run_tag>.per_cell.tsv
-                └── <run_tag>.meta.json
+└── <dataset>/
+    ├── inputs/
+    │   └── <run_tag>.npz
+    └── runs/
+        └── <run_tag>/
+            ├── <run_tag>.cells.txt
+            ├── <run_tag>.labels.tsv
+            ├── <run_tag>.latent.tsv
+            ├── <run_tag>.tumor_clusters.txt
+            ├── <run_tag>.cluster_scores.tsv
+            ├── <run_tag>.per_cell.tsv
+            └── <run_tag>.meta.json
 ```
 
 **`Cells.csv` required columns:** `cell_name`, and a cell type column (default `cell_type` with value `malignant` for tumor cells).
 
 **`Genes.txt`:** The MTX gene axis. Symbols may have surrounding quotes or Ensembl version suffixes — these are stripped automatically by `build_graph_inputs.py`.
 
+---
 
 ## Dependencies
 
 | Package | Purpose |
 |---|---|
-| `tensorflow` | GAT model training |
+| `tensorflow` | DeepMalignant GAT model training |
 | `scikit-learn` | kNN graph, GMM, KMeans, silhouette scoring |
 | `scanpy` / `leidenalg` / `igraph` | Leiden clustering in `train.py` |
 | `scipy` | Sparse matrix I/O (MTX format), graph normalisation |
 | `pandas` / `numpy` | Data loading and manipulation |
+
+---
+
+## Test Data
+
+The `test_data/` directory contains a processed example dataset derived from **Gao et al. (2021)**, sample **DCIS1**, retrieved via the [Weizmann Institute's Curated Cancer Cell Atlas (3CA)](https://www.weizmann.ac.il/sites/3CA/). It is provided to allow immediate end-to-end testing of the DeepMalignant pipeline without requiring access to a full dataset.
+
+| File | Description |
+|---|---|
+| `CNA.csv` | Copy number alteration matrix (cells × genomic bins) |
+| `GeneExpression.mtx` | UMI count matrix in Matrix Market format |
+| `GeneSignatures.txt` | Curated list of signature genes used as node features |
+| `GroundLabels.csv` | Per-cell ground-truth malignant/normal annotations |
+
+> Gao, R., et al. (2021). Delineating copy number and clonal substructure in human tumors from single-cell transcriptomes. *Nature Biotechnology*, 39, 599–608.
